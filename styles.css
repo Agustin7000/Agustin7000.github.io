@@ -31,12 +31,14 @@ h1 {
 }
 
 
-
 #contacto {
   font-size: 40px;
 }
 
 
+.contenido2 {
+  padding-left:25%;
+}
 .contenido {
     font-size: 30px;
     display: flex;
@@ -50,10 +52,6 @@ h1 {
 }
 
 
-#botones {
-    display: flex;
-    justify-content:space-evenly;
-}
 
 /* button {
     background-color: aqua;
@@ -66,11 +64,7 @@ h1 {
   
 } */
 
-.button-link {
-    font-size: 23px;
-    text-decoration: none;
-    color:blue;
-}
+
 
 #texto {
     text-align: center;
