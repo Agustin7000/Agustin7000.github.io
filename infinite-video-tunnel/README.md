@@ -51,7 +51,7 @@ El sitio es HTML/CSS/JS estático; procesa los archivos en el navegador mediante
 
 MIT. Ver `LICENSE`.
 
-## Video transparente desde Filmora (v1.1)
+## Video transparente desde Filmora (v1.2)
 
 **Usá el renderizador Windows; la exportación web no garantiza canal alfa.**
 
@@ -79,3 +79,11 @@ La transparencia se conserva mediante composición de capas con alfa pre-multipl
 ### Pruebas realizadas
 
 Render de una secuencia de prueba transparente con **CineForm → ProRes 4444** y **CineForm → VP9 WebM alfa**, verificando formato de píxeles (`yuva444p12le`, `alpha_mode=1`), fotogramas y valores de alfa tras decodificar el resultado. Las pruebas no sustituyen probar tu archivo específico exportado de Filmora.
+
+## Vista previa de CineForm transparente (v1.2)
+
+Algunos navegadores no pueden reproducir un MP4 CineForm con canal alfa aunque Filmora lo abra bien. La web ahora muestra un aviso si no consigue decodificar el video, en lugar de dejar la vista vacía.
+
+Para este caso usá la aplicación de Windows, `INICIAR_WINDOWS.bat`: su **nuevo previsualizador** usa FFmpeg para decodificar el original CineForm y dibuja el resultado sobre un tablero de transparencia. Mové el deslizador de tiempo y cambiá los parámetros para examinar distintos fotogramas antes de exportar. El preview funciona **por fotogramas seleccionados**, no a 30 FPS.
+
+Para conservar alfa en la salida, activá **Conservar transparencia (MOV ProRes 4444)**. El archivo no se convierte a H.264 ni se modifica durante la vista previa.

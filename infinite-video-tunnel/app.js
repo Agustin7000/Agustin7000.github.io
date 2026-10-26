@@ -28,6 +28,7 @@ let audioDestination = null;
 let monitorGain = null;
 let exportMime = '';
 let targetFps = 30;
+let loadWatchdog = null;
 
 function secondsLabel(sec) {
   const n = Number.isFinite(sec) ? Math.max(0, Math.floor(sec)) : 0;
@@ -151,6 +152,8 @@ async function loadFile(nextFile) {
     return;
   }
   video.pause();
+  if (loadWatchdog) clearTimeout(loadWatchdog);
+  $('previewNotice').hidden = true;
   if (fileURL) URL.revokeObjectURL(fileURL);
   clearResult();
   file = nextFile;
@@ -174,11 +177,25 @@ async function loadFile(nextFile) {
     resizeCanvas();
     refreshTime();
   };
-  video.onloadeddata = () => drawFrame();
-  video.onerror = () => {
+  video.onloadeddata = () => {
+    if (loadWatchdog) clearTimeout(loadWatchdog);
+    $('previewNotice').hidden = true;
+    drawFrame();
+  };
+  function previewUnsupported() {
+    if (loadWatchdog) clearTimeout(loadWatchdog);
+    if (video.readyState >= 2 && video.videoWidth) return;
+    $('previewNotice').hidden = false;
+    $('previewNotice').textContent = 'Este navegador no puede decodificar el video. Si lo exportaste transparente desde Filmora en CineForm, no lo conviertas a H.264: descargá la versión v1.2 para Windows desde GitHub, donde la vista previa funciona con FFmpeg y conserva el canal alfa.';
     $('exportBtn').disabled = true;
     $('playBtn').disabled = true;
-    alert('El navegador no pudo decodificar este archivo. Si es CineForm con transparencia de Filmora, usá el renderizador local en Windows: la conversión a H.264 eliminaría el alfa.');
+  }
+  loadWatchdog = setTimeout(previewUnsupported, 6000);
+  video.onerror = () => {
+    previewUnsupported();
+    $('exportBtn').disabled = true;
+    $('playBtn').disabled = true;
+    // Se muestra el aviso directamente en el visor, sin bloquear la página con una alerta.
   };
 }
 async function togglePreview() {
