@@ -12,6 +12,7 @@ from typing import Iterator
 import numpy as np
 
 from alpha_renderer import exact_read, render_alpha_frame
+from relay import render_relay_frame
 from render import output_dimensions, validate_settings
 
 
@@ -45,10 +46,13 @@ def make_checker(width: int, height: int, tile: int = 16) -> np.ndarray:
 
 
 def render_preview_rgb(rgba: np.ndarray, seconds: float, speed: float, ratio: float,
-                       depth: int, reverse: bool, checker: np.ndarray) -> np.ndarray:
+                       depth: int, reverse: bool, checker: np.ndarray,
+                       mode: str = "classic", start_scale: float = .10,
+                       end_scale: float = 5., overlap: float = .50) -> np.ndarray:
     """Same recursive alpha algorithm as final render, over checker background."""
     validate_settings(speed, ratio, depth)
-    transformed = render_alpha_frame(rgba, seconds, speed, ratio, depth, reverse)
+    transformed = (render_relay_frame(rgba, seconds, speed, start_scale, end_scale, overlap, reverse)
+                   if mode == "relay" else render_alpha_frame(rgba, seconds, speed, ratio, depth, reverse))
     alpha = transformed[..., 3:4].astype(np.float32) / 255.0
     rgb = transformed[..., :3].astype(np.float32)
     return np.clip(rgb * alpha + checker * (1.0 - alpha), 0, 255).astype(np.uint8)

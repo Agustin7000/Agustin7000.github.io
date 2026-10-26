@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 
 from alpha_renderer import render_alpha_frame
+from relay import render_relay_frame
 from render import output_dimensions, validate_settings
 
 
@@ -71,13 +72,16 @@ def checkerboard_preview(rgba: np.ndarray, tile_size: int = 16) -> np.ndarray:
 
 
 def preview_png(path: Path, at_seconds: float, speed: float, ratio: float,
-                depth: int, reverse: bool, source_meta: dict, max_short_side: int = 480) -> bytes:
+                depth: int, reverse: bool, mode: str = "classic",
+                start_scale: float = .10, end_scale: float = 5., overlap: float = .50,
+                *, source_meta: dict, max_short_side: int = 480) -> bytes:
     """Decode source, render effect, composite checker and return viewable PNG."""
     validate_settings(speed, ratio, depth)
     w, h = output_dimensions(source_meta['width'], source_meta['height'], max_short_side)
     t = max(0.0, min(float(at_seconds), source_meta['duration'] - 0.001))
     frame = decode_frame(path, t, w, h)
-    transformed = render_alpha_frame(frame, t, speed, ratio, depth, reverse)
+    transformed = (render_relay_frame(frame, t, speed, start_scale, end_scale, overlap, reverse)
+                   if mode == "relay" else render_alpha_frame(frame, t, speed, ratio, depth, reverse))
     rgb = checkerboard_preview(transformed)
     good, encoded = cv2.imencode('.png', cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
     if not good:

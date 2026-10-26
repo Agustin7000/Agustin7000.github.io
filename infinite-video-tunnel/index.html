@@ -11,14 +11,14 @@
 <body>
   <main class="app">
     <header class="header">
-      <div class="brand"><span class="brand-icon">◎</span> <span>INFINITE <strong>VIDEO TUNNEL</strong></span> <small>v1.3</small></div>
+      <div class="brand"><span class="brand-icon">◎</span> <span>INFINITE <strong>VIDEO TUNNEL</strong></span> <small>v2.0</small></div>
       <div class="header-tag">Procesamiento local · Sin límite artificial de duración</div>
     </header>
 
     <section class="intro">
       <div class="eyebrow">VIDEO FX / INFINITE ZOOM</div>
       <h1>Tu video.<br><em>Un túnel infinito.</em></h1>
-      <p>Cargá un MP4, ajustá la velocidad del túnel y exportá el resultado. Las copias salen desde el centro, se agrandan y vuelven a aparecer en profundidad, sin cortes visibles entre ciclos.</p>
+      <p>Nuevo Zoom Relay: una copia se acerca y sale de pantalla mientras la siguiente emerge detrás. También podés usar el túnel clásico. Sin IA y sin subir el video a un servidor.</p>
     </section>
 
     <div class="workspace">
@@ -45,10 +45,15 @@
       <section class="card settings-card">
         <div class="card-title"><span>02 / EFECTO</span><span>Controles</span></div>
         <div class="form-field">
+          <div class="field-heading"><label for="mode">Tipo de efecto</label></div>
+          <select id="mode"><option value="relay">Zoom Relay — copias sucesivas (nuevo)</option><option value="classic">Túnel clásico — copias anidadas</option></select>
+        </div>
+        <div class="form-field">
           <div class="field-heading"><label for="speed">Velocidad del zoom</label><output id="speedValue" for="speed">0,50 ciclos/s</output></div>
           <input id="speed" type="range" min="0.1" max="2.5" step="0.05" value="0.5">
           <div class="range-labels"><span>Lento</span><span>Rápido</span></div>
         </div>
+        <div id="classicControls" hidden>
         <div class="form-field">
           <div class="field-heading"><label for="ratio">Separación de las capas</label><output id="ratioValue" for="ratio">50%</output></div>
           <input id="ratio" type="range" min="0.3" max="0.75" step="0.01" value="0.5">
@@ -57,6 +62,22 @@
         <div class="form-field">
           <div class="field-heading"><label for="depth">Profundidad</label><output id="depthValue" for="depth">10 capas</output></div>
           <input id="depth" type="range" min="4" max="16" step="1" value="10">
+        </div>
+        </div>
+        <div id="relayControls">
+          <div class="form-field">
+            <div class="field-heading"><label for="startScale">Escala inicial</label><output id="startScaleValue">10%</output></div>
+            <input id="startScale" type="range" min="0.02" max="1" value="0.1" step="0.01">
+          </div>
+          <div class="form-field">
+            <div class="field-heading"><label for="endScale">Escala máxima</label><output id="endScaleValue">500%</output></div>
+            <input id="endScale" type="range" min="1.1" max="12" value="5" step="0.1">
+          </div>
+          <div class="form-field">
+            <div class="field-heading"><label for="overlap">Superposición entre copias</label><output id="overlapValue">50%</output></div>
+            <input id="overlap" type="range" min="0" max="0.7" value="0.50" step="0.01">
+            <div class="range-labels"><span>Una detrás de otra</span><span>Mayor superposición</span></div>
+          </div>
         </div>
         <div class="form-field">
           <div class="field-heading"><label for="direction">Dirección</label></div>
@@ -79,12 +100,12 @@
           <a id="downloadLink" class="download-button" download>Descargar resultado</a>
           <p id="resultText"></p>
         </div>
-        <p class="small-print">¿Video transparente exportado desde Filmora? La versión web no puede reproducir directamente muchos MP4 CineForm de Filmora. La app Windows v1.3 ofrece reproducción continua (▶ Play/Pausa) del túnel con transparencia usando FFmpeg, sin convertir el original. La grabación del navegador no garantiza alfa. Descargá el ZIP desde GitHub, ejecutá INICIAR_WINDOWS.bat y seleccioná «Conservar transparencia» para exportar MOV ProRes 4444.</p><p class="small-print">El archivo original nunca se envía a un servidor. En Firefox normalmente se exporta WebM; para MP4 garantizado, usá el renderizador local incluido en el repositorio.</p>
+        <p class="small-print">¿Video transparente exportado desde Filmora? La versión web no puede reproducir directamente muchos MP4 CineForm de Filmora. La app Windows v2.0 ofrece reproducción continua (▶ Play/Pausa) del túnel con transparencia usando FFmpeg, sin convertir el original. La grabación del navegador no garantiza alfa. Descargá el ZIP desde GitHub, ejecutá INICIAR_WINDOWS.bat y seleccioná «Conservar transparencia» para exportar MOV ProRes 4444.</p><p class="small-print">El archivo original nunca se envía a un servidor. En Firefox normalmente se exporta WebM; para MP4 garantizado, usá el renderizador local incluido en el repositorio.</p>
       </section>
     </div>
 
     <footer><span>INFINITE VIDEO TUNNEL · Código abierto</span><a href="https://github.com/Agustin7000/Agustin7000.github.io/tree/main/infinite-video-tunnel" target="_blank" rel="noopener">Ver código en GitHub ↗</a></footer>
   </main>
-  <script src="./app.js?v=1.3" defer></script>
+  <script src="./app.js?v=2.0" defer></script>
 </body>
 </html>

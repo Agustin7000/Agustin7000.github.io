@@ -15,7 +15,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from render import tunnel_frame, output_dimensions, validate_settings
+from render import output_dimensions, validate_settings
+from relay import render_relay_frame, validate_relay
 
 
 def probe_video(path: Path) -> dict:
@@ -100,8 +101,14 @@ def render_alpha_frame(frame: np.ndarray, seconds: float, speed: float = 0.5,
 def render_alpha(input_path: Path, output_path: Path, speed: float = 0.5,
                  ratio: float = 0.5, depth: int = 10, reverse: bool = False,
                  max_short_side: int = 1080, crf: int = 19,
-                 keep_audio: bool = True):
+                 keep_audio: bool = True, mode: str = "classic",
+                 start_scale: float = 0.1, end_scale: float = 5.,
+                 overlap: float = .50):
     validate_settings(speed, ratio, depth)
+    if mode not in ("classic", "relay"):
+        raise ValueError("Modo desconocido")
+    if mode == "relay":
+        validate_relay(start_scale, end_scale, overlap)
     if not input_path.is_file():
         raise FileNotFoundError(f'No existe el video: {input_path}')
     if input_path.resolve() == output_path.resolve():
@@ -158,7 +165,9 @@ def render_alpha(input_path: Path, output_path: Path, speed: float = 0.5,
             if not raw:
                 break
             source = np.frombuffer(raw, dtype=np.uint8).reshape(h, w, 4)
-            result = render_alpha_frame(source, done / fps, speed, ratio, depth, reverse)
+            result = (render_relay_frame(source, done / fps, speed, start_scale, end_scale, overlap, reverse)
+                      if mode == "relay" else
+                      render_alpha_frame(source, done / fps, speed, ratio, depth, reverse))
             try:
                 writer.stdin.write(result.tobytes())
             except BrokenPipeError as e:

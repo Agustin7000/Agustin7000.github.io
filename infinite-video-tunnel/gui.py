@@ -28,14 +28,18 @@ PREVIEW_SHORT_SIDE = 360
 class TunnelGUI:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title('Infinite Video Tunnel — reproducción continua (alfa)')
-        self.root.geometry('850x900')
+        self.root.title('Infinite Video Tunnel v2.0 — Zoom Relay')
+        self.root.geometry('890x980')
         self.root.minsize(650, 720)
         self.source = tk.StringVar()
         self.speed = tk.DoubleVar(value=0.5)
         self.ratio = tk.DoubleVar(value=0.5)
         self.depth = tk.IntVar(value=10)
         self.reverse = tk.BooleanVar(value=False)
+        self.mode = tk.StringVar(value='relay')
+        self.start_scale = tk.DoubleVar(value=.10)
+        self.end_scale = tk.DoubleVar(value=5.0)
+        self.overlap = tk.DoubleVar(value=.50)
         self.keep_audio = tk.BooleanVar(value=True)
         self.keep_alpha = tk.BooleanVar(value=True)
         self.height = tk.StringVar(value='1080')
@@ -52,7 +56,7 @@ class TunnelGUI:
         self.stop_event = threading.Event()
         self.current_decoder = None
         self.decoder_lock = threading.Lock()
-        self.play_settings = (.5, .5, 10, False)
+        self.play_settings = (.5, .5, 10, False, 'relay', .10, 5., .50)
         self._update_slider = False
         self._closing = False
         self.build()
@@ -63,7 +67,7 @@ class TunnelGUI:
         main = ttk.Frame(self.root, padding=16)
         main.pack(fill='both', expand=True)
         ttk.Label(main, text='INFINITE VIDEO TUNNEL', font=('Segoe UI', 18, 'bold')).pack(anchor='w', pady=(0, 4))
-        ttk.Label(main, text='Reproducción continua CineForm / MOV / MP4, con transparencia y efecto animado.').pack(anchor='w', pady=(0, 8))
+        ttk.Label(main, text='Zoom Relay: las copias llegan desde atrás, se acercan y salen. Reproducción CineForm con alfa.').pack(anchor='w', pady=(0, 8))
         row = ttk.Frame(main)
         row.pack(fill='x', pady=3)
         ttk.Entry(row, textvariable=self.source).pack(side='left', expand=True, fill='x')
@@ -84,16 +88,44 @@ class TunnelGUI:
         self.time_label.pack(side='left', padx=(10, 0))
         self.status = ttk.Label(main, text='La vista previa no necesita que el navegador lea CineForm.')
         self.status.pack(anchor='w', pady=(0, 6))
-        for label, var, lo, hi in [
-            ('Velocidad (ciclos/segundo)', self.speed, 0.1, 2.5),
-            ('Separación de capas', self.ratio, 0.3, 0.75),
-            ('Profundidad', self.depth, 4, 16)
-        ]:
-            field = ttk.Frame(main)
-            field.pack(fill='x', pady=(5, 0))
+        mode_row = ttk.Frame(main)
+        mode_row.pack(fill='x', pady=(4, 4))
+        ttk.Label(mode_row, text='EFECTO', width=17).pack(side='left')
+        ttk.Radiobutton(mode_row, text='Zoom Relay (nuevo)', variable=self.mode, value='relay',
+                        command=self.mode_changed).pack(side='left', padx=(0, 16))
+        ttk.Radiobutton(mode_row, text='Túnel clásico', variable=self.mode, value='classic',
+                        command=self.mode_changed).pack(side='left')
+
+        field = ttk.Frame(main)
+        field.pack(fill='x', pady=(3, 4))
+        ttk.Label(field, text='Velocidad (ciclos/segundo)', width=29).pack(side='left')
+        ttk.Scale(field, from_=0.1, to=2.5, variable=self.speed,
+                  command=self.on_settings).pack(side='left', fill='x', expand=True)
+
+        self.classic_frame = ttk.Frame(main)
+        for label, var, lo, hi in [('Separación de capas', self.ratio, 0.3, 0.75),
+                                   ('Profundidad', self.depth, 4, 16)]:
+            field = ttk.Frame(self.classic_frame)
+            field.pack(fill='x', pady=(3, 0))
             ttk.Label(field, text=label, width=29).pack(side='left')
-            ttk.Scale(field, from_=lo, to=hi, variable=var, command=self.on_settings).pack(side='left', fill='x', expand=True)
-        ttk.Checkbutton(main, text='Dirección hacia el centro', variable=self.reverse, command=self.on_settings).pack(anchor='w', pady=(8, 0))
+            ttk.Scale(field, from_=lo, to=hi, variable=var, command=self.on_settings).pack(
+                side='left', fill='x', expand=True)
+
+        self.relay_frame = ttk.Frame(main)
+        for label, var, lo, hi in [('Escala inicial (2%-100%)', self.start_scale, .02, 1.0),
+                                   ('Escala máxima (110%-1200%)', self.end_scale, 1.1, 12.0),
+                                   ('Superposición (0%-70%)', self.overlap, 0., .70)]:
+            field = ttk.Frame(self.relay_frame)
+            field.pack(fill='x', pady=(3, 0))
+            ttk.Label(field, text=label, width=29).pack(side='left')
+            ttk.Scale(field, from_=lo, to=hi, variable=var, command=self.on_settings).pack(
+                side='left', fill='x', expand=True)
+        self.relay_frame.pack(fill='x')
+        self.hint_label = ttk.Label(main, text='Relay: la copia grande queda delante; la nueva nace detrás y aparece al desvanecerse la anterior.',
+                  foreground='#888')
+        self.hint_label.pack(anchor='w', pady=(2, 4))
+        ttk.Checkbutton(main, text='Invertir dirección (hacia el centro)', variable=self.reverse,
+                        command=self.on_settings).pack(anchor='w', pady=(3, 0))
         ttk.Checkbutton(main, text='Conservar audio al exportar', variable=self.keep_audio).pack(anchor='w', pady=(3, 0))
         ttk.Checkbutton(main, text='Conservar transparencia (MOV ProRes 4444)', variable=self.keep_alpha,
                         command=self.alpha_changed).pack(anchor='w', pady=(4, 0))
@@ -114,6 +146,15 @@ class TunnelGUI:
 
     def alpha_changed(self):
         self.button.config(text='Exportar MOV transparente' if self.keep_alpha.get() else 'Exportar MP4 completo')
+
+    def mode_changed(self):
+        if self.mode.get() == 'relay':
+            self.classic_frame.pack_forget()
+            self.relay_frame.pack(fill='x', before=self.hint_label)
+        else:
+            self.relay_frame.pack_forget()
+            self.classic_frame.pack(fill='x', before=self.hint_label)
+        self.on_settings()
 
     def choose(self):
         path = filedialog.askopenfilename(filetypes=[('Videos', '*.mp4 *.mov *.webm *.mkv *.avi'), ('Todos', '*.*')])
@@ -148,7 +189,9 @@ class TunnelGUI:
             self.schedule_still()
 
     def on_settings(self, unused=None):
-        self.play_settings = (float(self.speed.get()), float(self.ratio.get()), int(round(self.depth.get())), self.reverse.get())
+        self.play_settings = (float(self.speed.get()), float(self.ratio.get()), int(round(self.depth.get())),
+                              self.reverse.get(), self.mode.get(), float(self.start_scale.get()),
+                              float(self.end_scale.get()), float(self.overlap.get()))
         # The playing thread reads the latest settings for each frame.
         if not self.playing:
             self.schedule_still()
@@ -260,7 +303,9 @@ class TunnelGUI:
                     if target + tick < time.monotonic():
                         # Drop late preview frames instead of slowing video time.
                         continue
-                    rgb = render_preview_rgb(frame, t, *self.play_settings, checker)
+                    speed, ratio, depth, reverse, mode, start_scale, end_scale, overlap = self.play_settings
+                    rgb = render_preview_rgb(frame, t, speed, ratio, depth, reverse, checker,
+                                             mode, start_scale, end_scale, overlap)
                     remaining = target - time.monotonic()
                     if remaining > 0 and stop.wait(remaining):
                         break
@@ -390,6 +435,9 @@ class TunnelGUI:
         if not out:
             return
         args = [sys.executable, str(Path(__file__).parent / 'render.py'), str(source), '-o', out,
+                '--mode', self.mode.get(), '--start-scale', str(round(self.start_scale.get(), 3)),
+                '--end-scale', str(round(self.end_scale.get(), 3)),
+                '--overlap', str(round(self.overlap.get(), 3)),
                 '--speed', str(round(self.speed.get(), 2)), '--ratio', str(round(self.ratio.get(), 2)),
                 '--depth', str(round(self.depth.get())), '--height', self.height.get()]
         if self.reverse.get():

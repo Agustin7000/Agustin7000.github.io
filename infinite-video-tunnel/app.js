@@ -37,6 +37,10 @@ function secondsLabel(sec) {
 }
 function selectedSettings() {
   return {
+    mode: $('mode').value,
+    startScale: Number($('startScale').value),
+    endScale: Number($('endScale').value),
+    overlap: Number($('overlap').value),
     speed: Number($('speed').value),
     ratio: Number($('ratio').value),
     depth: Number($('depth').value),
@@ -47,6 +51,11 @@ function updateSettingLabels() {
   $('speedValue').value = `${Number($('speed').value).toFixed(2).replace('.', ',')} ciclos/s`;
   $('ratioValue').value = `${Math.round(Number($('ratio').value) * 100)}%`;
   $('depthValue').value = `${$('depth').value} capas`;
+  $('startScaleValue').value = `${Math.round(Number($('startScale').value) * 100)}%`;
+  $('endScaleValue').value = `${Math.round(Number($('endScale').value) * 100)}%`;
+  $('overlapValue').value = `${Math.round(Number($('overlap').value) * 100)}%`;
+  $('relayControls').hidden = $('mode').value !== 'relay';
+  $('classicControls').hidden = $('mode').value !== 'classic';
 }
 function targetSize() {
   const w = video.videoWidth || 1280;
@@ -67,14 +76,44 @@ function resizeCanvas() {
   canvas.height = h;
   drawFrame();
 }
+function smoothstep(x) {
+  x = Math.max(0, Math.min(1, x));
+  return x*x*(3-2*x);
+}
+function drawRelay(t, W, H, {speed, startScale, endScale, overlap, reverse}) {
+  const period = 1 / speed;
+  const spacing = period * (1 - overlap);
+  const current = Math.floor(t / spacing);
+  // Newer layers go on the canvas FIRST; older, larger layers draw on top.
+  // Therefore a newly emerging mini-clone cannot cover the foreground face.
+  for (let n = current; n > current - Math.ceil(period / spacing) - 2; --n) {
+    const age = (t - n*spacing) / period;
+    if (age < 0 || age >= 1) continue;
+    const motion = reverse ? 1-age : age;
+    const scale = startScale * Math.pow(endScale/startScale, motion);
+    const fadeIn = Math.min(.08, Math.max(.025, overlap/3));
+    const fadeOut = Math.max(.13, Math.min(.32, overlap));
+    const opacity = smoothstep(age/fadeIn)*smoothstep((1-age)/fadeOut);
+    if (opacity < .00001) continue;
+    ctx.globalAlpha = opacity;
+    const w = W*scale, h = H*scale;
+    ctx.drawImage(video, (W-w)/2, (H-h)/2, w, h);
+  }
+  ctx.globalAlpha = 1;
+}
 function drawFrame() {
   if (!video.videoWidth || video.readyState < 2) return;
-  const {speed, ratio, depth, reverse} = selectedSettings();
+  const settings = selectedSettings();
+  const {speed, ratio, depth, reverse} = settings;
   const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  if (settings.mode === 'relay') {
+    drawRelay(video.currentTime, W, H, settings);
+    return;
+  }
   const cycles = video.currentTime * speed;
   let phase = cycles - Math.floor(cycles);
   if (reverse) phase = 1 - phase;
-  ctx.clearRect(0, 0, W, H);
   for (let level = 0; level < depth; level++) {
     const factor = Math.pow(ratio, level - phase);
     const destW = W * factor;
@@ -186,7 +225,7 @@ async function loadFile(nextFile) {
     if (loadWatchdog) clearTimeout(loadWatchdog);
     if (video.readyState >= 2 && video.videoWidth) return;
     $('previewNotice').hidden = false;
-    $('previewNotice').textContent = 'Este navegador no puede decodificar el video. Si lo exportaste transparente desde Filmora en CineForm, no lo conviertas a H.264: descargá la versión v1.2 para Windows desde GitHub, donde la vista previa funciona con FFmpeg y conserva el canal alfa.';
+    $('previewNotice').textContent = 'Este navegador no puede decodificar el video. Si lo exportaste transparente desde Filmora en CineForm, no lo conviertas a H.264: descargá la versión v2.0 para Windows desde GitHub, donde la vista previa funciona con FFmpeg y conserva el canal alfa.';
     $('exportBtn').disabled = true;
     $('playBtn').disabled = true;
   }
@@ -337,7 +376,7 @@ $('scrubber').addEventListener('input', e => {
 video.addEventListener('seeked', () => {drawFrame(); refreshTime();});
 video.addEventListener('pause', () => {if (!exporting) $('playBtn').textContent = '▶ Previsualizar';});
 video.addEventListener('ended', () => {if (!exporting) $('playBtn').textContent = '▶ Previsualizar';});
-for (const key of ['speed','ratio','depth','direction']) {
+for (const key of ['speed','ratio','depth','direction','mode','startScale','endScale','overlap']) {
   $(key).addEventListener('input', () => {updateSettingLabels(); if (video.paused) drawFrame();});
 }
 $('resolution').addEventListener('change', () => {if (!exporting) resizeCanvas();});

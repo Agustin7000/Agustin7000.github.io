@@ -1,103 +1,68 @@
-# INFINITE VIDEO TUNNEL
+# Infinite Video Tunnel v2.0
 
-Generador gratuito de **zoom infinito / efecto túnel recursivo** para videos completos. Creado para trabajar con MP4 de varios minutos, sin límites de duración de la página ni servicios externos de IA.
+Generador gratuito de **zoom infinito** para videos de cualquier duración, con dos modos seleccionables. El procesamiento es local: el archivo original nunca se sube a un servidor. Sin IA ni límites artificiales de 30 segundos.
 
-## Usarlo desde el navegador
+## Dos efectos
 
-**Sitio web:** https://agustincabrera.com.ar/infinite-video-tunnel/
+- **Zoom Relay (nuevo, predeterminado):** una copia del video nace pequeña, crece, se acerca a la pantalla y desaparece. Otra copia viene *detrás*, no por delante de tu cara. Cada copia se desvanece progresivamente. El video fuente sigue avanzando en tiempo real, sin reiniciarse al principio de cada zoom.
+- **Túnel clásico:** preserva el efecto original de copias simultáneas anidadas.
 
-1. Cargá un video desde tu computadora. El video **no se sube a ningún servidor**.
-2. Ajustá la velocidad del túnel y, opcionalmente, la separación, profundidad y dirección.
-3. Mirá la vista previa y presioná **Exportar video completo**.
-4. Dejá la pestaña abierta y visible; el navegador graba la animación en tiempo real. Un video de 2 minutos requiere aproximadamente 2 minutos de reproducción para exportarse.
-5. Descargá el resultado cuando termine.
+**Controles de Zoom Relay:** velocidad (ciclos/segundo), escala inicial (10% por defecto), escala máxima (500% por defecto), superposición (50% predeterminado para continuidad; probá 25% si querés más separación), dirección. Para túnel clásico siguen disponibles separación y profundidad.
 
-**Compatibilidad:** Firefox exporta normalmente WebM; otros navegadores pueden exportar MP4 si su implementación de `MediaRecorder` lo permite. La disponibilidad de audio también depende del navegador. Para **MP4 H.264 con audio de forma confiable**, usá el renderizador local siguiente.
+## Windows — recomendado para Filmora y videos transparentes
 
-No hay un límite artificial de 30 segundos. Los límites efectivos son RAM, rendimiento y codecs del navegador.
+1. Descargar el código desde este repositorio (`Code → Download ZIP`), descomprimirlo.
+2. Instalar [Python 3](https://python.org/downloads/) incluyendo el lanzador `py`, y FFmpeg: `winget install Gyan.FFmpeg`. Abrir una nueva terminal después de instalarlo.
+3. Ejecutar **`INICIAR_WINDOWS.bat`** (instala automáticamente `opencv-python`, `numpy` y `Pillow`).
+4. Elegir el video. Seleccionar **Zoom Relay** o **Túnel clásico**.
+5. Usar **▶ Reproducir** para observar el efecto animado; probar velocidad, escalas y superposición. La previsualización usa FFmpeg, acepta CineForm y muestra transparencia con tablero a cuadros. La vista previa es de hasta 15 FPS y sin audio para mantenerla responsiva.
+6. Activar **Conservar transparencia (MOV ProRes 4444)** para reimportar el resultado a Filmora y ponerle cualquier fondo. Exportar el video completo (con audio si está seleccionado).
 
-## MP4 en Windows, sin límite de duración
+Importante: una exportación MP4 H.264 normal **no conserva el canal alfa**. ProRes 4444 es un formato de edición, y algunos reproductores no lo mostrarán aunque Filmora sí.
 
-1. Descargá el ZIP del proyecto desde GitHub (**Code → Download ZIP**) y extraelo.
-2. Instalá [Python 3](https://www.python.org/downloads/) (marcando **Add python.exe to PATH**).
-3. Instalá FFmpeg desde PowerShell: `winget install Gyan.FFmpeg`, y abrí una nueva terminal.
-4. Hacé doble clic en `INICIAR_WINDOWS.bat`.
-5. Elegí un video, ajustá los controles y exportá MP4. El audio original se incluye si tiene pista de audio.
+## Herramienta web
 
-El exportador procesa fotograma por fotograma; no está limitado por una grabación en tiempo real. La duración de proceso depende de resolución y CPU.
+Abrir https://agustincabrera.com.ar/infinite-video-tunnel/
 
-### Modo consola
+Para videos decodificables por el navegador, permite previsualizar y exportar el efecto, grabando el canvas en tiempo real. Firefox suele generar WebM; Chrome puede generar MP4 según los códecs disponibles. **El navegador normalmente no puede leer MP4 CineForm con alfa de Filmora**; en ese caso utilizar la versión de Windows. La grabación con `MediaRecorder` no garantiza alfa.
+
+## Línea de comandos
 
 ```bash
 pip install -r requirements.txt
-python render.py "entrada.mp4" --speed 0.5 --ratio 0.5 --depth 10 -o "salida-tunnel.mp4"
+python render.py "entrada.mov" --mode relay --alpha --speed 0.5 --start-scale 0.10 --end-scale 5 --overlap 0.5 -o "resultado.mov"
 ```
 
-Parámetros: `--speed` (ciclos/s), `--ratio` (relación de escala), `--depth` (número de capas), `--reverse` (hacia el centro), `--height 720` (límite del lado corto), `--no-audio`.
+Sin transparencia:
 
-## Cómo funciona
+```bash
+python render.py "entrada.mp4" --mode relay --speed 0.7 --overlap 0.45 -o "resultado.mp4"
+```
 
-No usa IA, ni genera fotogramas sintéticos. Para cada fotograma del video fuente, crea capas recursivas centradas con escala:
+Túnel clásico original:
 
-`escala(capa, tiempo) = separacion ^ (capa - fracción(tiempo × velocidad))`
+```bash
+python render.py "entrada.mp4" --mode classic --speed 0.5 --ratio 0.5 --depth 10 -o "clasico.mp4"
+```
 
-Al cumplirse cada ciclo, las escalas de todas las capas se desplazan exactamente una posición: la capa que era pequeña se vuelve la grande. La ilusión se repite continuamente y no requiere cortar el video ni reiniciar el movimiento. Los bordes de las copias pueden ser visibles: es parte del efecto recursivo (Droste).
+- `--alpha` para conservar transparencia y exportar MOV ProRes 4444 o WebM VP9.
+- `--height 0` para resolución original (`--height 1080` limita el lado corto).
+- `--no-audio` para exportar sin audio.
+- `--reverse` invierte la dirección del movimiento.
+- El video original se decodifica cuadro a cuadro; no hay límite artificial de duración.
 
-## Nota sobre privacidad
+## Cómo funciona Zoom Relay
 
-El sitio es HTML/CSS/JS estático; procesa los archivos en el navegador mediante Canvas y MediaRecorder, sin endpoints de subida. El renderizador local trabaja íntegramente en tu computadora.
+Cada clon tiene una edad relativa distinta, de 0 a 1. Su escala crece exponencialmente entre la inicial y la final. Nacen cada `duración_del_ciclo × (1 - superposición)`. Los clones nuevos se pintan primero, y luego los antiguos se pintan encima: **una copia pequeña nunca tapa la grande**. Las capas aparecen y se desvanecen con transición suave y conservan los valores alfa mediante composición premultiplicada. La imagen original sigue avanzando de manera continua; solo se repite el *movimiento de zoom*, no el tiempo del video.
+
+## Pruebas
+
+```bash
+python -m unittest discover -s tests -p 'test_*.py'
+```
+
+Incluye comprobaciones de transparencia, orden de capas, continuidad, equivalencia entre vista previa y render, y un render de prueba CineForm → MOV ProRes 4444.
 
 ## Licencia
 
 MIT. Ver `LICENSE`.
-
-## Video transparente desde Filmora (v1.2)
-
-**Usá el renderizador Windows; la exportación web no garantiza canal alfa.**
-
-1. Exportá desde Filmora un video que realmente conserve transparencia (por ejemplo CineForm o ProRes 4444). No lo conviertas a H.264 para reproducirlo: el MP4 H.264 tradicional elimina el alfa.
-2. Abrí `INICIAR_WINDOWS.bat`, seleccioná el video original y activá **Conservar transparencia (MOV ProRes 4444)**.
-3. Ajustá velocidad / separación / profundidad y exportá. El resultado conserva las zonas transparentes y se puede volver a colocar sobre otro fondo en Filmora.
-4. Tené en cuenta que ProRes 4444 es un códec de edición que puede generar archivos bastante grandes y no abrirse en reproductores comunes. Comprobá el resultado **dentro de Filmora con una imagen debajo**.
-
-Para transparencia desde la línea de comandos:
-
-```bash
-python render.py "entrada-cineform.mov" --alpha --speed 0.5 --ratio 0.5 --depth 10 -o "tunnel-transparente.mov"
-```
-
-También admite salida WebM VP9 con alfa si indicás un nombre terminado en `.webm`, por ejemplo:
-
-```bash
-python render.py "entrada-cineform.mov" --alpha -o "tunnel-transparente.webm"
-```
-
-La entrada puede ser `.mp4`, `.mov`, `.webm` u otro contenedor que FFmpeg pueda decodificar. Si un archivo MP4 no se abre en el navegador, **no lo conviertas a H.264** si querés conservar la transparencia; abrí el original en el exportador local.
-
-La transparencia se conserva mediante composición de capas con alfa pre-multiplicado (evita contornos oscuros). La versión de navegador muestra un tablero de transparencia si el navegador es capaz de decodificar el archivo, pero la exportación web con `MediaRecorder` no tiene garantía de canal alfa; para un resultado fiable usá ProRes 4444 local.
-
-### Pruebas realizadas
-
-Render de una secuencia de prueba transparente con **CineForm → ProRes 4444** y **CineForm → VP9 WebM alfa**, verificando formato de píxeles (`yuva444p12le`, `alpha_mode=1`), fotogramas y valores de alfa tras decodificar el resultado. Las pruebas no sustituyen probar tu archivo específico exportado de Filmora.
-
-## Previsualizador de video transparente (v1.2)
-
-El previsualizador del navegador **no puede decodificar MP4 CineForm de Filmora en muchos navegadores**: puede verse vacío aunque el archivo sea válido. La versión 1.2 ahora muestra un aviso tras unos segundos si no puede decodificarlo, en lugar de dejar una pantalla vacía sin explicación.
-
-**Solución sin convertir el original:** abrir `INICIAR_WINDOWS.bat` y usar el nuevo previsualizador. Se decodifica directamente con FFmpeg y muestra el zoom sobre un tablero a cuadros para revelar las áreas transparentes. Incluye un deslizador para ver diferentes instantes del video y permite ajustar velocidad, separación y profundidad antes de exportar a MOV ProRes 4444. La previsualización es por fotogramas, no reproducción en tiempo real.
-
-El material original no se altera. La transparencia sólo se pierde si se escoge exportar a MP4 H.264 normal; para usarlo sobre fondos en Filmora, seleccionar **Conservar transparencia**.
-
-## Reproducción continua de CineForm transparente (v1.3)
-
-**Esta es la opción recomendada para videos transparentes de Filmora.** La vista web depende de los códecs admitidos por Chrome/Firefox, que habitualmente no decodifican CineForm MP4. El programa de Windows no usa el reproductor del navegador.
-
-1. Abrí `INICIAR_WINDOWS.bat` (Python 3, FFmpeg instalado y accesible desde PATH).
-2. Elegí el MP4 CineForm transparente de Filmora.
-3. Apretá **▶ Reproducir** para ver el **túnel animado de principio a fin** sobre el tablero que representa transparencia.
-4. Ajustá velocidad, separación o profundidad mientras se reproduce, usá **❚❚ Pausar** o mové la línea de tiempo.
-5. Marcá **Conservar transparencia (MOV ProRes 4444)** y exportá el resultado para volver a colocarlo encima de otro fondo en Filmora.
-
-La reproducción de Windows decodifica cuadros continuamente con FFmpeg y muestra hasta **15 fps a resolución reducida (lado corto máximo 360 píxeles)** para que se puedan ajustar los controles sin renderizar el video completo. Según el rendimiento del equipo, puede descartar cuadros atrasados; la exportación final mantiene la resolución y los fotogramas originales. **Esta vista previa es sin audio**; el audio puede conservarse en la exportación. No genera archivos proxy permanentes.
-
-Se requiere además `Pillow` (se instala automáticamente desde `requirements.txt`).

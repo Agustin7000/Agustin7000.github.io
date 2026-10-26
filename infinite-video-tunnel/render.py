@@ -19,6 +19,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from relay import render_relay_frame, validate_relay
 
 
 def validate_settings(speed: float, ratio: float, depth: int):
@@ -82,8 +83,13 @@ def output_dimensions(width: int, height: int, cap: int) -> tuple[int, int]:
 def render(input_path: Path, output_path: Path, speed: float = 0.5,
            ratio: float = 0.5, depth: int = 10, reverse: bool = False,
            max_short_side: int = 1080, crf: int = 19, preset: str = 'veryfast',
-           keep_audio: bool = True) -> None:
+           keep_audio: bool = True, mode: str = "classic",
+           start_scale: float = .10, end_scale: float = 5., overlap: float = .50) -> None:
     validate_settings(speed, ratio, depth)
+    if mode not in ("classic", "relay"):
+        raise ValueError("Modo desconocido")
+    if mode == "relay":
+        validate_relay(start_scale, end_scale, overlap)
     if not input_path.is_file():
         raise FileNotFoundError(f"No existe el video: {input_path}")
     if input_path.resolve() == output_path.resolve():
@@ -126,7 +132,15 @@ def render(input_path: Path, output_path: Path, speed: float = 0.5,
                 break
             if frame.shape[1] != w or frame.shape[0] != h:
                 frame = cv2.resize(frame, (w, h), interpolation=cv2.INTER_AREA)
-            transformed = tunnel_frame(frame, processed / fps, speed, ratio, depth, reverse)
+            if mode == "relay":
+                rgba = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+                result = render_relay_frame(rgba, processed / fps, speed, start_scale, end_scale, overlap, reverse)
+                # H.264 cannot store alpha. Composite onto black for an honest RGB export.
+                alpha = result[..., 3:4].astype(np.float32) / 255.0
+                transformed = cv2.cvtColor(np.rint(result[..., :3] * alpha).astype(np.uint8),
+                                           cv2.COLOR_RGB2BGR)
+            else:
+                transformed = tunnel_frame(frame, processed / fps, speed, ratio, depth, reverse)
             try:
                 encoder.stdin.write(transformed.tobytes())
             except BrokenPipeError as e:
@@ -166,6 +180,10 @@ def main():
     parser.add_argument('--crf', type=int, default=19, help='Calidad MP4, menor = mejor (0-51)')
     parser.add_argument('--no-audio', action='store_true', help='Exportar sin audio')
     parser.add_argument('--alpha', action='store_true', help='Conservar transparencia: MOV ProRes 4444 o WebM VP9')
+    parser.add_argument('--mode', choices=['classic', 'relay'], default='classic', help='Efecto: túnel clásico o Zoom Relay')
+    parser.add_argument('--start-scale', type=float, default=0.10, help='Escala inicial de Relay (0.10 = 10%%)')
+    parser.add_argument('--end-scale', type=float, default=5.0, help='Escala final de Relay (5 = 500%%)')
+    parser.add_argument('--overlap', type=float, default=.50, help='Fracción de superposición de Relay (0-0.7)')
     args = parser.parse_args()
     ext = '.mov' if args.alpha else '.mp4'
     output = args.output or args.input.with_name(args.input.stem + '-tunnel' + ext)
@@ -173,10 +191,14 @@ def main():
         if args.alpha:
             from alpha_renderer import render_alpha
             render_alpha(args.input, output, args.speed, args.ratio, args.depth, args.reverse,
-                         args.height, args.crf, keep_audio=not args.no_audio)
+                         args.height, args.crf, keep_audio=not args.no_audio,
+                         mode=args.mode, start_scale=args.start_scale,
+                         end_scale=args.end_scale, overlap=args.overlap)
         else:
             render(args.input, output, args.speed, args.ratio, args.depth, args.reverse,
-                   args.height, args.crf, keep_audio=not args.no_audio)
+                   args.height, args.crf, keep_audio=not args.no_audio,
+                   mode=args.mode, start_scale=args.start_scale,
+                   end_scale=args.end_scale, overlap=args.overlap)
     except (Exception, KeyboardInterrupt) as e:
         print(f'ERROR: {e}', file=sys.stderr)
         sys.exit(1)
