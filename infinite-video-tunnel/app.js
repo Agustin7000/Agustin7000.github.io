@@ -11,7 +11,7 @@
 const $ = (id) => document.getElementById(id);
 const video = $('sourceVideo');
 const canvas = $('canvas');
-const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
 const fileInput = $('fileInput');
 let file = null;
 let fileURL = null;
@@ -135,6 +135,7 @@ function showFormatNotice() {
   const format = chooseMime();
   let msg = 'La exportación se realiza en tiempo real: un video de 2 minutos tarda aproximadamente 2 minutos. Mantené visible la pestaña.';
   if (format && format.ext === 'webm') msg += ' Tu navegador exportará WebM; el renderizador local disponible en GitHub produce MP4 con audio.';
+  msg += ' Para conservar transparencias, usá Exportar MOV transparente en la versión Windows (el grabador del navegador puede perder el alfa).';
   if (!format) msg = 'Este navegador no admite la grabación necesaria. Probá Chrome/Edge o utilizá el renderizador local en GitHub.';
   $('formatNotice').textContent = msg;
 }
@@ -177,7 +178,7 @@ async function loadFile(nextFile) {
   video.onerror = () => {
     $('exportBtn').disabled = true;
     $('playBtn').disabled = true;
-    alert('El navegador no pudo decodificar este archivo. Convertí el video a MP4 H.264 o usá el renderizador local.');
+    alert('El navegador no pudo decodificar este archivo. Si es CineForm con transparencia de Filmora, usá el renderizador local en Windows: la conversión a H.264 eliminaría el alfa.');
   };
 }
 async function togglePreview() {

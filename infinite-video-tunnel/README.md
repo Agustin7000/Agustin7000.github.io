@@ -50,3 +50,32 @@ El sitio es HTML/CSS/JS estático; procesa los archivos en el navegador mediante
 ## Licencia
 
 MIT. Ver `LICENSE`.
+
+## Video transparente desde Filmora (v1.1)
+
+**Usá el renderizador Windows; la exportación web no garantiza canal alfa.**
+
+1. Exportá desde Filmora un video que realmente conserve transparencia (por ejemplo CineForm o ProRes 4444). No lo conviertas a H.264 para reproducirlo: el MP4 H.264 tradicional elimina el alfa.
+2. Abrí `INICIAR_WINDOWS.bat`, seleccioná el video original y activá **Conservar transparencia (MOV ProRes 4444)**.
+3. Ajustá velocidad / separación / profundidad y exportá. El resultado conserva las zonas transparentes y se puede volver a colocar sobre otro fondo en Filmora.
+4. Tené en cuenta que ProRes 4444 es un códec de edición que puede generar archivos bastante grandes y no abrirse en reproductores comunes. Comprobá el resultado **dentro de Filmora con una imagen debajo**.
+
+Para transparencia desde la línea de comandos:
+
+```bash
+python render.py "entrada-cineform.mov" --alpha --speed 0.5 --ratio 0.5 --depth 10 -o "tunnel-transparente.mov"
+```
+
+También admite salida WebM VP9 con alfa si indicás un nombre terminado en `.webm`, por ejemplo:
+
+```bash
+python render.py "entrada-cineform.mov" --alpha -o "tunnel-transparente.webm"
+```
+
+La entrada puede ser `.mp4`, `.mov`, `.webm` u otro contenedor que FFmpeg pueda decodificar. Si un archivo MP4 no se abre en el navegador, **no lo conviertas a H.264** si querés conservar la transparencia; abrí el original en el exportador local.
+
+La transparencia se conserva mediante composición de capas con alfa pre-multiplicado (evita contornos oscuros). La versión de navegador muestra un tablero de transparencia si el navegador es capaz de decodificar el archivo, pero la exportación web con `MediaRecorder` no tiene garantía de canal alfa; para un resultado fiable usá ProRes 4444 local.
+
+### Pruebas realizadas
+
+Render de una secuencia de prueba transparente con **CineForm → ProRes 4444** y **CineForm → VP9 WebM alfa**, verificando formato de píxeles (`yuva444p12le`, `alpha_mode=1`), fotogramas y valores de alfa tras decodificar el resultado. Las pruebas no sustituyen probar tu archivo específico exportado de Filmora.

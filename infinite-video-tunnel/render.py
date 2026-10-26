@@ -165,11 +165,18 @@ def main():
     parser.add_argument('--height', type=int, default=1080, help='Límite del lado corto en píxeles; 0 = original')
     parser.add_argument('--crf', type=int, default=19, help='Calidad MP4, menor = mejor (0-51)')
     parser.add_argument('--no-audio', action='store_true', help='Exportar sin audio')
+    parser.add_argument('--alpha', action='store_true', help='Conservar transparencia: MOV ProRes 4444 o WebM VP9')
     args = parser.parse_args()
-    output = args.output or args.input.with_name(args.input.stem + '-tunnel.mp4')
+    ext = '.mov' if args.alpha else '.mp4'
+    output = args.output or args.input.with_name(args.input.stem + '-tunnel' + ext)
     try:
-        render(args.input, output, args.speed, args.ratio, args.depth, args.reverse,
-               args.height, args.crf, keep_audio=not args.no_audio)
+        if args.alpha:
+            from alpha_renderer import render_alpha
+            render_alpha(args.input, output, args.speed, args.ratio, args.depth, args.reverse,
+                         args.height, args.crf, keep_audio=not args.no_audio)
+        else:
+            render(args.input, output, args.speed, args.ratio, args.depth, args.reverse,
+                   args.height, args.crf, keep_audio=not args.no_audio)
     except (Exception, KeyboardInterrupt) as e:
         print(f'ERROR: {e}', file=sys.stderr)
         sys.exit(1)

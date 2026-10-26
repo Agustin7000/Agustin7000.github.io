@@ -14,7 +14,7 @@ class TunnelGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title('Infinite Video Tunnel — exportar MP4')
-        self.root.geometry('610x540')
+        self.root.geometry('660x590')
         self.root.minsize(480, 460)
         self.source = tk.StringVar()
         self.speed = tk.DoubleVar(value=0.5)
@@ -22,6 +22,7 @@ class TunnelGUI:
         self.depth = tk.IntVar(value=10)
         self.reverse = tk.BooleanVar(value=False)
         self.keep_audio = tk.BooleanVar(value=True)
+        self.keep_alpha = tk.BooleanVar(value=False)
         self.height = tk.StringVar(value='1080')
         self.running = False
         self.build()
@@ -42,16 +43,23 @@ class TunnelGUI:
             ttk.Scale(main, from_=lo, to=hi, variable=var).pack(fill='x', pady=(3, 2))
         ttk.Checkbutton(main, text='Dirección hacia el centro', variable=self.reverse).pack(anchor='w', pady=(8, 0))
         ttk.Checkbutton(main, text='Conservar audio', variable=self.keep_audio).pack(anchor='w', pady=(6, 0))
+        ttk.Checkbutton(main, text='Conservar transparencia (MOV ProRes 4444)', variable=self.keep_alpha,
+                        command=self.alpha_changed).pack(anchor='w', pady=(7, 0))
+        ttk.Label(main, text='Para tu video recortado de Filmora: activar transparencia. MP4 H.264 no admite alfa.',
+                  foreground='#888').pack(anchor='w', pady=(2, 0))
         settings = ttk.Frame(main)
         settings.pack(fill='x', pady=12)
         ttk.Label(settings, text='Lado corto máximo').pack(side='left')
         ttk.Combobox(settings, textvariable=self.height, state='readonly', width=12,
                      values=['540', '720', '1080', '0']).pack(side='left', padx=12)
         ttk.Label(settings, text='0 = resolución original').pack(side='left')
-        self.button = ttk.Button(main, text='Exportar MP4 completo', command=self.start)
+        self.button = ttk.Button(main, text='Exportar video completo', command=self.start)
         self.button.pack(fill='x', pady=8)
         self.log = tk.Text(main, height=7, wrap='word', state='disabled')
         self.log.pack(fill='both', expand=True)
+
+    def alpha_changed(self):
+        self.button.config(text='Exportar MOV transparente' if self.keep_alpha.get() else 'Exportar MP4 completo')
 
     def choose(self):
         path = filedialog.askopenfilename(filetypes=[('Videos', '*.mp4 *.mov *.webm *.mkv *.avi'), ('Todos', '*.*')])
@@ -71,14 +79,17 @@ class TunnelGUI:
         if not source.is_file():
             messagebox.showerror('Falta el video', 'Elegí primero un video de entrada.')
             return
-        out = filedialog.asksaveasfilename(defaultextension='.mp4', initialfile=source.stem + '-tunnel.mp4',
-                                           filetypes=[('Video MP4', '*.mp4')])
+        ext = '.mov' if self.keep_alpha.get() else '.mp4'
+        out = filedialog.asksaveasfilename(defaultextension=ext, initialfile=source.stem + '-tunnel' + ext,
+                                           filetypes=[('Video transparente ProRes 4444', '*.mov')] if self.keep_alpha.get()
+                                           else [('Video MP4', '*.mp4')])
         if not out:
             return
         args = [sys.executable, str(Path(__file__).parent / 'render.py'), str(source), '-o', out,
                 '--speed', str(round(self.speed.get(), 2)), '--ratio', str(round(self.ratio.get(), 2)),
                 '--depth', str(round(self.depth.get())), '--height', self.height.get()]
         if self.reverse.get(): args.append('--reverse')
+        if self.keep_alpha.get(): args.append('--alpha')
         if not self.keep_audio.get(): args.append('--no-audio')
         self.button.config(state='disabled')
         threading.Thread(target=self.worker, args=(args, out), daemon=True).start()
