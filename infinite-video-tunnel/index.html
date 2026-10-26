@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101014">
+  <title>Infinite Video Tunnel — Zoom recursivo</title>
+  <meta name="description" content="Zoom túnel infinito para videos completos, gratis y en tu navegador. Sin subir archivos a un servidor.">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand"><span class="brand-icon">◎</span> <span>INFINITE <strong>VIDEO TUNNEL</strong></span> <small>v1.0</small></div>
+      <div class="header-tag">Procesamiento local · Sin límite artificial de duración</div>
+    </header>
+
+    <section class="intro">
+      <div class="eyebrow">VIDEO FX / INFINITE ZOOM</div>
+      <h1>Tu video.<br><em>Un túnel infinito.</em></h1>
+      <p>Cargá un MP4, ajustá la velocidad del túnel y exportá el resultado. Las copias salen desde el centro, se agrandan y vuelven a aparecer en profundidad, sin cortes visibles entre ciclos.</p>
+    </section>
+
+    <div class="workspace">
+      <section class="card preview-card">
+        <div class="card-title"><span>01 / VIDEO</span><span id="videoMeta">Sin video cargado</span></div>
+        <label id="dropZone" class="drop-zone" for="fileInput" tabindex="0" role="button">
+          <span class="upload-symbol">＋</span>
+          <strong>Elegí un video o arrastralo acá</strong>
+          <span>MP4, MOV, WebM y formatos compatibles con tu navegador</span>
+          <input type="file" id="fileInput" accept="video/*,.mkv,.mov,.mp4,.webm" hidden>
+        </label>
+        <div class="viewer" id="viewer" hidden>
+          <canvas id="canvas" width="960" height="540" aria-label="Vista previa del efecto de túnel"></canvas>
+          <video id="sourceVideo" preload="auto" playsinline crossorigin="anonymous" hidden></video>
+        </div>
+        <div class="preview-controls">
+          <button id="playBtn" type="button" class="mini-button" disabled>▶ Previsualizar</button>
+          <input id="scrubber" type="range" aria-label="Posición de video" min="0" max="1000" value="0" disabled>
+          <time id="timeDisplay">00:00 / 00:00</time>
+        </div>
+      </section>
+
+      <section class="card settings-card">
+        <div class="card-title"><span>02 / EFECTO</span><span>Controles</span></div>
+        <div class="form-field">
+          <div class="field-heading"><label for="speed">Velocidad del zoom</label><output id="speedValue" for="speed">0,50 ciclos/s</output></div>
+          <input id="speed" type="range" min="0.1" max="2.5" step="0.05" value="0.5">
+          <div class="range-labels"><span>Lento</span><span>Rápido</span></div>
+        </div>
+        <div class="form-field">
+          <div class="field-heading"><label for="ratio">Separación de las capas</label><output id="ratioValue" for="ratio">50%</output></div>
+          <input id="ratio" type="range" min="0.3" max="0.75" step="0.01" value="0.5">
+          <div class="range-labels"><span>Túnel profundo</span><span>Capas cercanas</span></div>
+        </div>
+        <div class="form-field">
+          <div class="field-heading"><label for="depth">Profundidad</label><output id="depthValue" for="depth">10 capas</output></div>
+          <input id="depth" type="range" min="4" max="16" step="1" value="10">
+        </div>
+        <div class="form-field">
+          <div class="field-heading"><label for="direction">Dirección</label></div>
+          <select id="direction"><option value="out">Hacia la pantalla (sale del centro)</option><option value="in">Hacia el centro (se aleja)</option></select>
+        </div>
+        <div class="form-field">
+          <div class="field-heading"><label for="resolution">Resolución de salida</label></div>
+          <select id="resolution"><option value="1080">Hasta 1080p (recomendado)</option><option value="720">Hasta 720p (más liviano)</option><option value="540">Hasta 540p (rápido)</option><option value="native">Resolución original</option></select>
+        </div>
+        <label class="check"><input id="includeAudio" type="checkbox" checked><span>Conservar el audio original</span></label>
+        <div class="notice" id="formatNotice">La exportación se realiza en tiempo real. Dejá esta pestaña abierta y visible hasta que termine.</div>
+        <button id="exportBtn" type="button" class="export-button" disabled>Exportar video completo</button>
+        <button id="cancelBtn" type="button" class="cancel-button" hidden>Cancelar exportación</button>
+        <div id="progressBlock" class="progress-block" hidden>
+          <div class="progress-top"><span id="progressText">Procesando...</span><span id="progressPercent">0%</span></div>
+          <progress id="progress" value="0" max="100"></progress>
+        </div>
+        <div id="resultBlock" class="result-block" hidden>
+          <strong>✓ Video listo</strong>
+          <a id="downloadLink" class="download-button" download>Descargar resultado</a>
+          <p id="resultText"></p>
+        </div>
+        <p class="small-print">El archivo original nunca se envía a un servidor. En Firefox normalmente se exporta WebM; para MP4 garantizado, usá el renderizador local incluido en el repositorio.</p>
+      </section>
+    </div>
+
+    <footer><span>INFINITE VIDEO TUNNEL · Código abierto</span><a href="https://github.com/Agustin7000/Agustin7000.github.io/tree/main/infinite-video-tunnel" target="_blank" rel="noopener">Ver código en GitHub ↗</a></footer>
+  </main>
+  <script src="./app.js" defer></script>
+</body>
+</html>
