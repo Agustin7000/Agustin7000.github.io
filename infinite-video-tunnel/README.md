@@ -80,10 +80,24 @@ La transparencia se conserva mediante composición de capas con alfa pre-multipl
 
 Render de una secuencia de prueba transparente con **CineForm → ProRes 4444** y **CineForm → VP9 WebM alfa**, verificando formato de píxeles (`yuva444p12le`, `alpha_mode=1`), fotogramas y valores de alfa tras decodificar el resultado. Las pruebas no sustituyen probar tu archivo específico exportado de Filmora.
 
-## Vista previa de CineForm transparente (v1.2)
+## Previsualizador de video transparente (v1.2)
 
-Algunos navegadores no pueden reproducir un MP4 CineForm con canal alfa aunque Filmora lo abra bien. La web ahora muestra un aviso si no consigue decodificar el video, en lugar de dejar la vista vacía.
+El previsualizador del navegador **no puede decodificar MP4 CineForm de Filmora en muchos navegadores**: puede verse vacío aunque el archivo sea válido. La versión 1.2 ahora muestra un aviso tras unos segundos si no puede decodificarlo, en lugar de dejar una pantalla vacía sin explicación.
 
-Para este caso usá la aplicación de Windows, `INICIAR_WINDOWS.bat`: su **nuevo previsualizador** usa FFmpeg para decodificar el original CineForm y dibuja el resultado sobre un tablero de transparencia. Mové el deslizador de tiempo y cambiá los parámetros para examinar distintos fotogramas antes de exportar. El preview funciona **por fotogramas seleccionados**, no a 30 FPS.
+**Solución sin convertir el original:** abrir `INICIAR_WINDOWS.bat` y usar el nuevo previsualizador. Se decodifica directamente con FFmpeg y muestra el zoom sobre un tablero a cuadros para revelar las áreas transparentes. Incluye un deslizador para ver diferentes instantes del video y permite ajustar velocidad, separación y profundidad antes de exportar a MOV ProRes 4444. La previsualización es por fotogramas, no reproducción en tiempo real.
 
-Para conservar alfa en la salida, activá **Conservar transparencia (MOV ProRes 4444)**. El archivo no se convierte a H.264 ni se modifica durante la vista previa.
+El material original no se altera. La transparencia sólo se pierde si se escoge exportar a MP4 H.264 normal; para usarlo sobre fondos en Filmora, seleccionar **Conservar transparencia**.
+
+## Reproducción continua de CineForm transparente (v1.3)
+
+**Esta es la opción recomendada para videos transparentes de Filmora.** La vista web depende de los códecs admitidos por Chrome/Firefox, que habitualmente no decodifican CineForm MP4. El programa de Windows no usa el reproductor del navegador.
+
+1. Abrí `INICIAR_WINDOWS.bat` (Python 3, FFmpeg instalado y accesible desde PATH).
+2. Elegí el MP4 CineForm transparente de Filmora.
+3. Apretá **▶ Reproducir** para ver el **túnel animado de principio a fin** sobre el tablero que representa transparencia.
+4. Ajustá velocidad, separación o profundidad mientras se reproduce, usá **❚❚ Pausar** o mové la línea de tiempo.
+5. Marcá **Conservar transparencia (MOV ProRes 4444)** y exportá el resultado para volver a colocarlo encima de otro fondo en Filmora.
+
+La reproducción de Windows decodifica cuadros continuamente con FFmpeg y muestra hasta **15 fps a resolución reducida (lado corto máximo 360 píxeles)** para que se puedan ajustar los controles sin renderizar el video completo. Según el rendimiento del equipo, puede descartar cuadros atrasados; la exportación final mantiene la resolución y los fotogramas originales. **Esta vista previa es sin audio**; el audio puede conservarse en la exportación. No genera archivos proxy permanentes.
+
+Se requiere además `Pillow` (se instala automáticamente desde `requirements.txt`).
