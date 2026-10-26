@@ -172,7 +172,10 @@ def main():
     parser = argparse.ArgumentParser(description='Aplica túnel de zoom infinito al video entero (MP4 + audio).')
     parser.add_argument('input', type=Path, help='Ruta al video de entrada')
     parser.add_argument('-o', '--output', type=Path, help='Archivo de salida (por defecto <nombre>-tunnel.mp4)')
-    parser.add_argument('--speed', type=float, default=0.5, help='Ciclos por segundo (0.5 = zoom cada 2 s)')
+    parser.add_argument('--speed', type=float, default=0.5, help='Ciclos por segundo (modo manual)')
+    parser.add_argument('--bpm', type=float, help='Sincronizar entradas con BPM; reemplaza --speed')
+    parser.add_argument('--beats-per-entry', type=float, choices=[0.5, 1, 2, 4, 8], default=1,
+                        help='Tiempos por nueva copia (4 = un compás de 4/4)')
     parser.add_argument('--ratio', type=float, default=0.5, help='Relación entre niveles, por defecto 0.5')
     parser.add_argument('--depth', type=int, default=10, help='Cantidad de capas recursivas')
     parser.add_argument('--reverse', action='store_true', help='Invertir la dirección, hacia el centro')
@@ -188,6 +191,9 @@ def main():
     ext = '.mov' if args.alpha else '.mp4'
     output = args.output or args.input.with_name(args.input.stem + '-tunnel' + ext)
     try:
+        if args.bpm is not None:
+            from tempo import tempo_speed
+            args.speed = tempo_speed(args.bpm, args.beats_per_entry, args.mode, args.overlap)
         if args.alpha:
             from alpha_renderer import render_alpha
             render_alpha(args.input, output, args.speed, args.ratio, args.depth, args.reverse,

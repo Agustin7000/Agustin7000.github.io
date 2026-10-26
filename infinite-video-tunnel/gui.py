@@ -20,6 +20,7 @@ from PIL import Image, ImageTk
 from preview_renderer import probe, preview_png
 from preview_stream import PreviewDecoder, make_checker, render_preview_rgb
 from render import output_dimensions
+from tempo import tempo_speed, cycle_milliseconds
 
 PREVIEW_FPS = 15
 PREVIEW_SHORT_SIDE = 360
@@ -28,11 +29,15 @@ PREVIEW_SHORT_SIDE = 360
 class TunnelGUI:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title('Infinite Video Tunnel v2.0 — Zoom Relay')
-        self.root.geometry('890x980')
+        self.root.title('Infinite Video Tunnel v2.1 — Zoom Relay + BPM')
+        self.root.geometry('890x1040')
         self.root.minsize(650, 720)
         self.source = tk.StringVar()
         self.speed = tk.DoubleVar(value=0.5)
+        self.sync_mode = tk.StringVar(value='manual')
+        self.bpm = tk.StringVar(value='135')
+        self.beat_division = tk.StringVar(value='1 tiempo')
+        self.timing_info = tk.StringVar(value='Nueva copia cada 1000 ms · recorrido 2000 ms')
         self.ratio = tk.DoubleVar(value=0.5)
         self.depth = tk.IntVar(value=10)
         self.reverse = tk.BooleanVar(value=False)
@@ -60,6 +65,9 @@ class TunnelGUI:
         self._update_slider = False
         self._closing = False
         self.build()
+        self.bpm.trace_add('write', lambda *_: self.on_settings())
+        self.beat_division.trace_add('write', lambda *_: self.on_settings())
+        self.on_settings()
         self.root.after(25, self.poll_messages)
         self.root.protocol('WM_DELETE_WINDOW', self.close)
 
@@ -96,11 +104,26 @@ class TunnelGUI:
         ttk.Radiobutton(mode_row, text='Túnel clásico', variable=self.mode, value='classic',
                         command=self.mode_changed).pack(side='left')
 
-        field = ttk.Frame(main)
-        field.pack(fill='x', pady=(3, 4))
-        ttk.Label(field, text='Velocidad (ciclos/segundo)', width=29).pack(side='left')
-        ttk.Scale(field, from_=0.1, to=2.5, variable=self.speed,
+        rhythm_row = ttk.Frame(main)
+        rhythm_row.pack(fill='x', pady=(3, 4))
+        ttk.Label(rhythm_row, text='RITMO', width=17).pack(side='left')
+        ttk.Radiobutton(rhythm_row, text='Manual', variable=self.sync_mode, value='manual',
+                        command=self.sync_changed).pack(side='left', padx=(0, 16))
+        ttk.Radiobutton(rhythm_row, text='Sincronizar con BPM', variable=self.sync_mode, value='bpm',
+                        command=self.sync_changed).pack(side='left')
+        self.manual_speed_row = ttk.Frame(main)
+        self.manual_speed_row.pack(fill='x', pady=(3, 4))
+        ttk.Label(self.manual_speed_row, text='Velocidad (ciclos/segundo)', width=29).pack(side='left')
+        ttk.Scale(self.manual_speed_row, from_=0.1, to=10, variable=self.speed,
                   command=self.on_settings).pack(side='left', fill='x', expand=True)
+        self.bpm_row = ttk.Frame(main)
+        ttk.Label(self.bpm_row, text='BPM', width=10).pack(side='left')
+        ttk.Entry(self.bpm_row, textvariable=self.bpm, width=9).pack(side='left', padx=(0, 15))
+        ttk.Label(self.bpm_row, text='Nueva copia cada').pack(side='left')
+        ttk.Combobox(self.bpm_row, textvariable=self.beat_division, state='readonly', width=23,
+                     values=['½ tiempo', '1 tiempo', '2 tiempos', '1 compás (4/4)', '2 compases (4/4)']).pack(side='left', padx=(9, 0))
+        self.timing_label = ttk.Label(main, textvariable=self.timing_info)
+        self.timing_label.pack(anchor='w', pady=(0, 6))
 
         self.classic_frame = ttk.Frame(main)
         for label, var, lo, hi in [('Separación de capas', self.ratio, 0.3, 0.75),
@@ -156,6 +179,27 @@ class TunnelGUI:
             self.classic_frame.pack(fill='x', before=self.hint_label)
         self.on_settings()
 
+    def sync_changed(self):
+        if self.sync_mode.get() == 'bpm':
+            self.manual_speed_row.pack_forget()
+            self.bpm_row.pack(fill='x', pady=(3, 4), before=self.timing_label)
+        else:
+            self.bpm_row.pack_forget()
+            self.manual_speed_row.pack(fill='x', pady=(3, 4), before=self.timing_label)
+        self.on_settings()
+
+    def effective_speed(self):
+        if self.sync_mode.get() == 'manual':
+            return float(self.speed.get())
+        beats = {
+            '½ tiempo': 0.5, '1 tiempo': 1.0, '2 tiempos': 2.0,
+            '1 compás (4/4)': 4.0, '2 compases (4/4)': 8.0
+        }.get(self.beat_division.get())
+        if beats is None:
+            raise ValueError('Seleccioná una división musical válida')
+        return tempo_speed(float(self.bpm.get()), beats,
+                           self.mode.get(), float(self.overlap.get()))
+
     def choose(self):
         path = filedialog.askopenfilename(filetypes=[('Videos', '*.mp4 *.mov *.webm *.mkv *.avi'), ('Todos', '*.*')])
         if not path:
@@ -189,7 +233,16 @@ class TunnelGUI:
             self.schedule_still()
 
     def on_settings(self, unused=None):
-        self.play_settings = (float(self.speed.get()), float(self.ratio.get()), int(round(self.depth.get())),
+        try:
+            speed = self.effective_speed()
+            cadence_ms, traversal_ms = cycle_milliseconds(speed, self.mode.get(), float(self.overlap.get()))
+        except (ValueError, ZeroDivisionError):
+            self.timing_info.set('Ingresá un BPM válido entre 40 y 300')
+            return
+        cadence_text = 'Nueva copia' if self.mode.get() == 'relay' else 'Ciclo completo'
+        self.timing_info.set(f'{cadence_text} cada {cadence_ms:.2f} ms · '
+                             f'recorrido {traversal_ms:.2f} ms · {speed:.4f} ciclos/s')
+        self.play_settings = (speed, float(self.ratio.get()), int(round(self.depth.get())),
                               self.reverse.get(), self.mode.get(), float(self.start_scale.get()),
                               float(self.end_scale.get()), float(self.overlap.get()))
         # The playing thread reads the latest settings for each frame.
@@ -434,11 +487,16 @@ class TunnelGUI:
                                            if self.keep_alpha.get() else [('Video MP4', '*.mp4')])
         if not out:
             return
+        try:
+            precise_speed = self.effective_speed()
+        except (ValueError, ZeroDivisionError):
+            messagebox.showerror('BPM inválido', 'Ingresá un BPM entre 40 y 300.')
+            return
         args = [sys.executable, str(Path(__file__).parent / 'render.py'), str(source), '-o', out,
                 '--mode', self.mode.get(), '--start-scale', str(round(self.start_scale.get(), 3)),
                 '--end-scale', str(round(self.end_scale.get(), 3)),
                 '--overlap', str(round(self.overlap.get(), 3)),
-                '--speed', str(round(self.speed.get(), 2)), '--ratio', str(round(self.ratio.get(), 2)),
+                '--speed', repr(precise_speed), '--ratio', str(round(self.ratio.get(), 2)),
                 '--depth', str(round(self.depth.get())), '--height', self.height.get()]
         if self.reverse.get():
             args.append('--reverse')

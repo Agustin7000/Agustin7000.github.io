@@ -66,3 +66,19 @@ Incluye comprobaciones de transparencia, orden de capas, continuidad, equivalenc
 ## Licencia
 
 MIT. Ver `LICENSE`.
+
+## v2.1 · Sincronización musical (BPM)
+
+Existe **Control del ritmo → Sincronizar con BPM** en la web y la versión de Windows. Ingresá los BPM de la canción (40–300; ejemplo **135**) y elegí **½ tiempo / 1 tiempo / 2 tiempos / 1 compás (4/4) / 2 compases (4/4)**.
+
+La interfaz muestra el **intervalo entre cada nueva copia** y la **duración de cada recorrido**, ambos en milisegundos. En Zoom Relay los dos valores son distintos por la superposición. La sincronización musical se aplica al **intervalo entre entradas**: `velocidad = (BPM / (60 × tiempos)) × (1 - superposición)`. Por ejemplo, a 135 BPM y 1 tiempo entra una nueva copia cada **444,44 ms**, incluso si modificás la superposición.
+
+El primer pulso se toma del inicio del video (`t = 0`). Si el primer golpe musical aparece más tarde, alineá el inicio en tu editor. La versión Windows exporta usando toda la precisión de la velocidad, sin redondearla a dos decimales. El modo manual sigue disponible.
+
+También puede indicarse desde la consola:
+
+```bash
+python render.py "video.mov" --mode relay --alpha --bpm 135 --beats-per-entry 1 --overlap 0.5 -o "video-a-tempo.mov"
+```
+
+Para verificar los cálculos: `python -m unittest discover -s tests -p test_tempo.py`.

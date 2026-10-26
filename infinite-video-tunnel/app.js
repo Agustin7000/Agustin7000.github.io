@@ -35,20 +35,48 @@ function secondsLabel(sec) {
   const minutes = String(Math.floor(n / 60)).padStart(2, '0');
   return `${minutes}:${String(n % 60).padStart(2, '0')}`;
 }
+function timingValues() {
+  const mode = $('mode').value;
+  const overlap = Number($('overlap').value);
+  const beatCount = Number($('beatDivision').value);
+  const manual = $('timingMode').value === 'manual';
+  const bpm = Number($('bpm').value);
+  if (!manual && (!Number.isFinite(bpm) || bpm < 40 || bpm > 300 || !Number.isFinite(beatCount))) return null;
+  // For relay, the entrance interval is (1-overlap) / speed, not 1 / speed.
+  const speed = manual ? Number($('speed').value) :
+    bpm / (60 * beatCount) * (mode === 'relay' ? 1 - overlap : 1);
+  return {
+    speed,
+    cadenceMs: 1000 / speed * (mode === 'relay' ? 1 - overlap : 1),
+    traversalMs: 1000 / speed
+  };
+}
 function selectedSettings() {
   return {
     mode: $('mode').value,
     startScale: Number($('startScale').value),
     endScale: Number($('endScale').value),
     overlap: Number($('overlap').value),
-    speed: Number($('speed').value),
+    speed: timingValues()?.speed ?? Number($('speed').value),
     ratio: Number($('ratio').value),
     depth: Number($('depth').value),
     reverse: $('direction').value === 'in'
   };
 }
 function updateSettingLabels() {
+  const bpmMode = $('timingMode').value === 'bpm';
+  $('manualSpeedControls').hidden = bpmMode;
+  $('bpmControls').hidden = !bpmMode;
+  const timing = timingValues();
   $('speedValue').value = `${Number($('speed').value).toFixed(2).replace('.', ',')} ciclos/s`;
+  if (timing) {
+    const format = n => n.toLocaleString('es-AR', {maximumFractionDigits:2, minimumFractionDigits:2});
+    $('cadenceValue').textContent = `${$('mode').value === 'relay' ? 'Nueva copia' : 'Ciclo completo'} cada ${format(timing.cadenceMs)} ms`;
+    $('durationValue').textContent = `Duración del recorrido: ${format(timing.traversalMs)} ms · ${format(timing.speed)} ciclos/s`;
+  } else {
+    $('cadenceValue').textContent = 'Ingresá un BPM válido (40–300)';
+    $('durationValue').textContent = 'No se puede calcular la velocidad';
+  }
   $('ratioValue').value = `${Math.round(Number($('ratio').value) * 100)}%`;
   $('depthValue').value = `${$('depth').value} capas`;
   $('startScaleValue').value = `${Math.round(Number($('startScale').value) * 100)}%`;
@@ -272,6 +300,10 @@ function endExportUi() {
 }
 async function exportVideo() {
   if (!file || exporting) return;
+  if (!timingValues()) {
+    alert('Ingresá un BPM válido entre 40 y 300 para exportar.');
+    return;
+  }
   const format = chooseMime();
   if (!format || !canvas.captureStream) {
     alert('La exportación no está disponible en este navegador. Probá Chrome o Edge, o el renderizador MP4 local.');
@@ -376,7 +408,7 @@ $('scrubber').addEventListener('input', e => {
 video.addEventListener('seeked', () => {drawFrame(); refreshTime();});
 video.addEventListener('pause', () => {if (!exporting) $('playBtn').textContent = '▶ Previsualizar';});
 video.addEventListener('ended', () => {if (!exporting) $('playBtn').textContent = '▶ Previsualizar';});
-for (const key of ['speed','ratio','depth','direction','mode','startScale','endScale','overlap']) {
+for (const key of ['speed','ratio','depth','direction','mode','startScale','endScale','overlap','timingMode','bpm','beatDivision']) {
   $(key).addEventListener('input', () => {updateSettingLabels(); if (video.paused) drawFrame();});
 }
 $('resolution').addEventListener('change', () => {if (!exporting) resizeCanvas();});
